@@ -61,7 +61,7 @@ Record desktop audio output (speakers/headphones) for meeting notes, video summa
 
 - Python 3.8+
 - ffmpeg (for audio processing)
-- OpenAI API key (for Whisper transcription)
+- Whisper (local installation for transcription)
 - PulseAudio (Linux) for desktop audio capture
 
 ### 1. Clone the repo
@@ -81,15 +81,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure OpenAI API key
-
-Add to your shell profile (~/.bashrc or ~/.zshrc):
-
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
-
-### 4. Install skills globally
+### 3. Install skills globally
 
 Symlink skills to make them available in all Claude Code sessions:
 
@@ -101,7 +93,7 @@ ln -s ~/loka/code/claude-voice/skills/listen_start
 ln -s ~/loka/code/claude-voice/skills/listen_stop
 ```
 
-### 5. Configure vault(s)
+### 4. Configure vault(s)
 
 For each vault where you want voice features, create `.mcp.json`:
 
@@ -185,7 +177,7 @@ When you invoke a skill, Claude Code:
 - Restart Claude Code session
 
 ### "Transcription failed"
-- Verify OPENAI_API_KEY is set: `echo $OPENAI_API_KEY`
+- Verify Whisper is installed locally: `which whisper`
 - Check audio file was created (temp files in `/tmp/`)
 - Ensure ffmpeg is installed: `which ffmpeg`
 
