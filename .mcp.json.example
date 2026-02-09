@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "voice": {
+      "command": "/home/yourusername/loka/code/claude-voice/mcp-server/.venv/bin/python",
+      "args": ["/home/yourusername/loka/code/claude-voice/mcp-server/server.py"],
+      "env": {
+        "VAULT_DIR": "/home/yourusername/path/to/your/vault"
+      }
+    }
+  }
+}
