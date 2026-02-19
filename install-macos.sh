@@ -38,7 +38,7 @@ header "1. System check"
 
 [[ "$(uname)" == "Darwin" ]] || error "This script is for macOS. On Linux, run ./install.sh instead."
 
-python3 --version >/dev/null 2>&1 || error "Python 3 is required. Install it with: brew install python"
+python3 --version >/dev/null 2>&1 || error "Python 3 is required. Install with: brew install python"
 ok "Python: $(python3 --version)"
 
 # ── 2. Homebrew ───────────────────────────────────────────────────────────────
@@ -55,17 +55,17 @@ if ! command -v brew >/dev/null 2>&1; then
         error "Homebrew is required. Install it from https://brew.sh and re-run."
     fi
 else
-    ok "Homebrew found: $(brew --prefix)"
+    ok "Homebrew: $(brew --prefix)"
 fi
 
 # ── 3. System dependencies ────────────────────────────────────────────────────
 header "3. System dependencies"
 
 MISSING=()
-command -v ffmpeg >/dev/null 2>&1   || MISSING+=("ffmpeg")
-command -v jq >/dev/null 2>&1       || MISSING+=("jq")
+command -v jq     >/dev/null 2>&1 || MISSING+=("jq")
+command -v ffmpeg >/dev/null 2>&1 || MISSING+=("ffmpeg")
 
-# portaudio needed for pyaudio
+# portaudio needed to compile pyaudio
 if ! python3 -c "import pyaudio" 2>/dev/null; then
     brew list portaudio >/dev/null 2>&1 || MISSING+=("portaudio")
 fi
@@ -109,13 +109,12 @@ else
         WHISPER_VENV="$DEFAULT_WHISPER_VENV"
         ok "Whisper installed at $WHISPER_VENV"
     else
-        warn "Skipped — transcription won't work until Whisper is installed"
-        warn "Set WHISPER_VENV in ~/.claude/settings.json when ready"
+        warn "Skipped — set WHISPER_VENV in ~/.claude/settings.json when ready"
         WHISPER_VENV="$DEFAULT_WHISPER_VENV"
     fi
 fi
 
-# ── 5. MCP server Python venv ─────────────────────────────────────────────────
+# ── 5. MCP server venv ────────────────────────────────────────────────────────
 header "5. MCP server"
 
 info "Creating Python venv..."
@@ -134,8 +133,45 @@ fi
 
 ok "MCP server ready at $MCP_SERVER/.venv"
 
-# ── 6. Skills ─────────────────────────────────────────────────────────────────
-header "6. Claude Code skills"
+# ── 6. Vault for voice_note (optional) ───────────────────────────────────────
+header "6. Vault for voice_note (optional)"
+
+VAULT_DIR=""
+echo "  /voice_note saves transcriptions to a vault's inbox/ folder."
+echo "  Skip this if you only want /voice_prompt."
+echo ""
+read -p "  Configure a vault now? [y/N] " -n 1 -r; echo
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    read -p "  Vault path (e.g. ~/notes): " VAULT_INPUT
+    VAULT_DIR="${VAULT_INPUT/#\~/$HOME}"
+
+    if [[ ! -d "$VAULT_DIR" ]]; then
+        read -p "  Directory not found. Create it? [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            mkdir -p "$VAULT_DIR/inbox"
+            ok "Created $VAULT_DIR/inbox"
+        else
+            warn "Skipped — configure VAULT_DIR in ~/.claude/settings.json manually"
+            VAULT_DIR=""
+        fi
+    elif [[ ! -d "$VAULT_DIR/inbox" ]]; then
+        read -p "  No inbox/ found. Create $VAULT_DIR/inbox? [Y/n] " -n 1 -r; echo
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            mkdir -p "$VAULT_DIR/inbox"
+            ok "Created inbox/"
+        else
+            warn "/voice_note needs an inbox/ folder — create it manually"
+        fi
+    else
+        ok "Vault: $VAULT_DIR"
+    fi
+else
+    info "Skipped — add VAULT_DIR to ~/.claude/settings.json later if needed"
+fi
+
+# ── 7. Skills ─────────────────────────────────────────────────────────────────
+header "7. Claude Code skills"
 
 mkdir -p "$SKILLS_DIR"
 
@@ -149,32 +185,57 @@ for skill in voice_prompt voice_note; do
     fi
 
     ln -s "$src" "$dst"
-    ok "Linked: $skill → $dst"
+    ok "Linked: $skill"
 done
 
 warn "listen_start / listen_stop require PulseAudio — skipped on macOS"
 
-# ── 7. Global MCP config in ~/.claude/settings.json ──────────────────────────
-header "7. Claude Code MCP config"
+# ── 8. Claude Code MCP config ─────────────────────────────────────────────────
+header "8. Claude Code MCP config"
 
 PYTHON_BIN="$MCP_SERVER/.venv/bin/python"
 SERVER_PY="$MCP_SERVER/server.py"
 
-NEW_ENTRY=$(jq -n \
-    --arg cmd "$PYTHON_BIN" \
-    --argjson args "[\"$SERVER_PY\"]" \
-    --arg whisper_venv "$WHISPER_VENV" \
-    '{command: $cmd, args: $args, env: {WHISPER_VENV: $whisper_venv}}')
+mkdir -p "$CLAUDE_DIR"
 
-if [[ -f "$SETTINGS_FILE" ]]; then
-    UPDATED=$(jq --argjson entry "$NEW_ENTRY" '.mcpServers.voice = $entry' "$SETTINGS_FILE")
-    echo "$UPDATED" > "$SETTINGS_FILE"
+if command -v jq >/dev/null 2>&1; then
+    if [[ -n "$VAULT_DIR" ]]; then
+        NEW_ENTRY=$(jq -n \
+            --arg cmd "$PYTHON_BIN" \
+            --argjson args "[\"$SERVER_PY\"]" \
+            --arg whisper_venv "$WHISPER_VENV" \
+            --arg vault_dir "$VAULT_DIR" \
+            '{command: $cmd, args: $args, env: {WHISPER_VENV: $whisper_venv, VAULT_DIR: $vault_dir}}')
+    else
+        NEW_ENTRY=$(jq -n \
+            --arg cmd "$PYTHON_BIN" \
+            --argjson args "[\"$SERVER_PY\"]" \
+            --arg whisper_venv "$WHISPER_VENV" \
+            '{command: $cmd, args: $args, env: {WHISPER_VENV: $whisper_venv}}')
+    fi
+
+    if [[ -f "$SETTINGS_FILE" ]]; then
+        UPDATED=$(jq --argjson entry "$NEW_ENTRY" '.mcpServers.voice = $entry' "$SETTINGS_FILE")
+        echo "$UPDATED" > "$SETTINGS_FILE"
+    else
+        echo '{}' | jq --argjson entry "$NEW_ENTRY" '.mcpServers.voice = $entry' > "$SETTINGS_FILE"
+    fi
+
+    ok "Added 'voice' server to $SETTINGS_FILE"
 else
-    mkdir -p "$CLAUDE_DIR"
-    echo '{}' | jq --argjson entry "$NEW_ENTRY" '.mcpServers.voice = $entry' > "$SETTINGS_FILE"
+    warn "jq not available — add the following to ~/.claude/settings.json manually:"
+    echo ""
+    echo '    "mcpServers": {'
+    echo '      "voice": {'
+    echo "        \"command\": \"$PYTHON_BIN\","
+    echo "        \"args\": [\"$SERVER_PY\"],"
+    echo "        \"env\": {"
+    echo "          \"WHISPER_VENV\": \"$WHISPER_VENV\""
+    [[ -n "$VAULT_DIR" ]] && echo "          \"VAULT_DIR\": \"$VAULT_DIR\""
+    echo "        }"
+    echo "      }"
+    echo "    }"
 fi
-
-ok "Added 'voice' server to $SETTINGS_FILE"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
@@ -188,4 +249,7 @@ echo "    /voice_prompt    — speak a command to Claude"
 echo "    /voice_note      — dictate a voice note"
 echo ""
 echo "  Note: /listen_start and /listen_stop are Linux-only."
+echo ""
+echo -e "  ${YELLOW}⚠${NC}  macOS microphone access: on first use, macOS will ask you to"
+echo "     grant microphone permission to your terminal app. Allow it."
 echo ""
