@@ -70,17 +70,24 @@ Everything else (ffmpeg, portaudio, Whisper) is handled by the installer.
 ```bash
 git clone https://github.com/rabb1tpt/claude-voice.git
 cd claude-voice
+
+# Linux
 ./install.sh
+
+# macOS
+./install-macos.sh
 ```
 
 The installer will:
-1. Check and offer to install system deps (`ffmpeg`, `portaudio19-dev`, `pulseaudio-utils`)
+1. Check and offer to install system deps (`ffmpeg`, `portaudio`, etc.)
 2. Install [Whisper](https://github.com/openai/whisper) for transcription (or detect an existing install)
 3. Set up the MCP server Python venv
-4. Symlink all skills to `~/.claude/skills/`
+4. Symlink skills to `~/.claude/skills/`
 5. Register the `voice` MCP server in `~/.claude/settings.json` (available globally in all Claude Code sessions)
 
 Then **restart Claude Code** and you're ready.
+
+> **macOS note:** `/listen_start` and `/listen_stop` require PulseAudio and are Linux-only. `/voice_prompt` and `/voice_note` work on both platforms.
 
 ## Usage
 
