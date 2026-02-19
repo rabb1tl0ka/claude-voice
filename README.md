@@ -59,59 +59,28 @@ Record desktop audio output (speakers/headphones) for meeting notes, video summa
 
 ### Prerequisites
 
+- Linux (Ubuntu/Debian recommended)
 - Python 3.8+
-- ffmpeg (for audio processing)
-- Whisper (local installation for transcription)
-- PulseAudio (Linux) for desktop audio capture
+- `jq` (`sudo apt install jq`)
 
-### 1. Clone the repo
+Everything else (ffmpeg, portaudio, Whisper) is handled by the installer.
+
+### One-shot install
 
 ```bash
-cd ~/loka/code  # or wherever you keep your code
-git clone git@github.com:rabb1tl0ka/claude-voice.git
+git clone https://github.com/rabb1tpt/claude-voice.git
 cd claude-voice
+./install.sh
 ```
 
-### 2. Set up Python environment
+The installer will:
+1. Check and offer to install system deps (`ffmpeg`, `portaudio19-dev`, `pulseaudio-utils`)
+2. Install [Whisper](https://github.com/openai/whisper) for transcription (or detect an existing install)
+3. Set up the MCP server Python venv
+4. Symlink all skills to `~/.claude/skills/`
+5. Register the `voice` MCP server in `~/.claude/settings.json` (available globally in all Claude Code sessions)
 
-```bash
-cd mcp-server
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3. Install skills globally
-
-Symlink skills to make them available in all Claude Code sessions:
-
-```bash
-cd ~/.claude/skills
-ln -s ~/loka/code/claude-voice/skills/voice_note
-ln -s ~/loka/code/claude-voice/skills/voice_prompt
-ln -s ~/loka/code/claude-voice/skills/listen_start
-ln -s ~/loka/code/claude-voice/skills/listen_stop
-```
-
-### 4. Configure vault(s)
-
-For each vault where you want voice features, create `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "voice": {
-      "command": "/home/yourusername/loka/code/claude-voice/mcp-server/.venv/bin/python",
-      "args": ["/home/yourusername/loka/code/claude-voice/mcp-server/server.py"],
-      "env": {
-        "VAULT_DIR": "/home/yourusername/path/to/your/vault"
-      }
-    }
-  }
-}
-```
-
-See `.mcp.json.example` for a template.
+Then **restart Claude Code** and you're ready.
 
 ## Usage
 

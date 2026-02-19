@@ -4,36 +4,38 @@ An MCP server for voice input - record voice notes or speak commands for Claude 
 
 ## Setup
 
-### 1. Create virtual environment
+Use the installer in the repo root — it handles everything automatically:
 
 ```bash
-cd ~/Bruno/code/MCP-voice
+./install.sh
+```
+
+### Manual setup (advanced)
+
+```bash
+cd mcp-server
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure in your project
-
-Add a `.mcp.json` file in your project root:
+Then add to `~/.claude/settings.json`:
 
 ```json
 {
   "mcpServers": {
     "voice": {
-      "command": "/path/to/MCP-voice/.venv/bin/python",
-      "args": ["/path/to/MCP-voice/server.py"],
+      "command": "/path/to/claude-voice/mcp-server/.venv/bin/python",
+      "args": ["/path/to/claude-voice/mcp-server/server.py"],
       "env": {
-        "VAULT_DIR": "/path/to/your/vault"
+        "WHISPER_VENV": "/path/to/openai-whisper/.venv"
       }
     }
   }
 }
 ```
 
-### 3. Restart Claude Code
-
-The voice tools will be available.
+Restart Claude Code — the voice tools will be available.
 
 ## Environment Variables
 
